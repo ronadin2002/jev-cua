@@ -1,0 +1,46 @@
+# macOS / editors
+.DS_Store
+.AppleDouble
+*.swp
+*.xcuserstate
+xcuserdata/
+
+# Builds and local work
+dist/
+build/
+.build/
+DerivedData/
+work/
+outputs/
+*.app/
+*.dSYM/
+*.zip
+*.dmg
+
+# Secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.keychain
+*.keychain-db
+credentials*
+secrets*
+
+# Recordings and local diagnostics
+*.wav
+*.aiff
+*.aif
+*.mp3
+*.m4a
+*.mp4
+*.MP4
+*.mov
+*.log
+jev-*.json
+*-observed.txt
+reports/
+diagnostics/
