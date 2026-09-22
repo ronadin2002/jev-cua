@@ -44,3 +44,6 @@ jev-*.json
 *-observed.txt
 reports/
 diagnostics/
+
+# Intentionally published, reviewed product demo
+!assets/demo.mp4

@@ -1,72 +1,120 @@
-# Jev Voice 4.3 — floating command bar
+# Jev Voice
 
-A small floating command bar that stays above your Mac apps, keeps listening, and repeatedly asks `~typesafe/jev-latest` on OpenRouter to select from the actions available in the current computer state.
+### Talk to your Mac. Watch it work.
 
-## How the loop works
+A small floating bar for voice and text commands. Jev picks the next action from your Mac’s live controls, the app executes it, and the loop continues toward your request.
 
-1. Apple on-device speech recognition accumulates the full spoken request.
-2. The app preserves that request verbatim. It does not split it into scripted tasks.
-3. It discovers installed applications and reads the current app's Accessibility tree: controls, menu items, windows, fields, values, and exposed actions.
-4. It supplies these actions plus generic keyboard, scrolling, dragging, typing, waiting, and completion choices to Jev.
-5. Jev picks one action. Parameter choices (text, complete key combinations, drag targets) also go to Jev.
-6. The app executes that primitive and observes its result. The next Jev choice includes completion alongside actions from the fresh catalogue, with the unchanged original request and history.
-7. Jev selects completion. A separate Jev check compares the current screen against the entire request and its literal values before the app reports success.
+[![macOS build](https://github.com/ronadin2002/jev-cua/actions/workflows/macos.yml/badge.svg)](https://github.com/ronadin2002/jev-cua/actions/workflows/macos.yml)
+![macOS 14+, Apple silicon](https://img.shields.io/badge/macOS-14%2B%20%C2%B7%20Apple%20silicon-20252b?logo=apple&logoColor=white)
+[![Jev Latest](https://img.shields.io/badge/Jev-latest-83dfc1)](https://typesafe.ai/blog/introducing-system-one-models-and-jev)
 
-There are no website aliases, app-specific task recipes, navigation macros, command-to-action regular expressions, or automatic completion after typing/launching. The capability catalogue does not take the request as an argument. The small fixed vocabulary is the execution machinery itself: physical keys, pointer events, Accessibility APIs, and voice session controls such as “cancel task.”
+[![Jev Voice demo: opening Chrome, searching, calculating, and taking a photo](assets/demo.gif)](assets/demo.mp4)
 
-## Options and typing
+**[Watch the full 42-second demo with sound →](assets/demo.mp4)**
 
-Every discovered option is retained. Jev's 255-choice limit is handled by groups: compact action labels select a group; full descriptions select the action. Generic operations remain directly selectable. Large catalogues route through operation categories and alphabetical target groups. Only the selected branch is evaluated, avoiding exhaustive parallel nominations. Every discovered leaf remains reachable. Category and group selection execute nothing; UI actions remain sequential. Accessibility scans have a time/node budget and explicitly report incomplete scans; Jev can request a deeper scan.
+Preview above plays at 2× speed. The full video plays at its original speed.
 
-Typing is also selection. Insertion and whole-field replacement are separate choices. Replacement selects all text, verifies that selection, pastes the chosen literal, and verifies the resulting field value; it never submits automatically. Jev selects a source (your request or observed text), the first token, then the complete substring to insert. Code preserves its spelling, punctuation and internal whitespace. Typing does not switch apps, focus another field, submit, navigate, or silently add a domain. “Open YouTube” can therefore lead to entering “YouTube” in a browser and following a search result. A website mapping does not supply “youtube.com.”
+**[Get started](#get-started)** · **[How it works](#how-it-works)** · **[Contribute](CONTRIBUTING.md)**
 
-Jev cannot generate new prose or understand screenshots. Original writing, custom-drawn/inaccessible controls, arbitrary pixel-level editing and unrestricted human-equivalent operation are **not** supported. Some UI trees provide incomplete or stale information. This app is a general Accessibility-based action picker, not a guarantee that every task will succeed. Secure fields are excluded. Pointer targets are checked; uncertain text insertion stops to prevent duplication. Model completion checks reduce false success but are not infallible.
+## One bar, wherever you work
 
-## Use
+- **Keep talking.** Turn the mic on once. Speak a full request, pause, then give another. Commands queue while work is in progress.
+- **Type when you prefer.** Click the bar, enter a command, and press Return. Text commands work with the mic off.
+- **Complete multiple steps.** Each action is followed by a fresh observation and another Jev decision. Options come from the current interface and installed apps.
+- **See what is happening.** The bar shows your command and current action. Settings → Jev activity shows the model’s inputs, choices, errors, and observed results.
 
-Open **Jev Voice.app**. Setup needs an OpenRouter key (stored in Keychain), Microphone, Speech Recognition, and Accessibility permissions. Once configured, normal launch starts continuous listening and displays a compact command bar below the menu bar. It follows app/Space changes and remains available in full-screen apps. The microphone, live transcript, typed command and task status are the everyday interface; a stop button appears while working.
+The bar stays available across apps and full-screen Spaces. There is no confirmation queue; the stop button and “cancel task” interrupt execution.
 
-Speak full requests and pause when finished. “End command” explicitly ends an utterance. Keep speaking additional requests while earlier ones run. “Cancel task” stops the current task and clears queued requests; “stop listening” turns off the mic; Option–Space toggles it. “Status” reads the current progress. There is no action-confirmation queue.
+## In the demo
 
-Type directly in the bar and press Return, or speak. Reopening the app shows the bar. The menu-bar waveform offers Show/Hide command bar and Settings & diagnostics. Settings contains General and Jev activity; the old dashboard and sidebar have been removed. The text box is always visible. Typed requests queue even with the mic off. Switching off the mic or recovering from a speech error does not cancel an active task. Temporary connection errors retry up to twice; authentication and credit errors do not. Saved keys remain in Keychain and are cached in memory during the session. Settings show connection status and the provider key expiration date. Menu-bar settings and diagnostics remain available. Spoken results are optional and off by default. Recognition currently uses English.
+| Spoken request | Visible action |
+| --- | --- |
+| “Open Chrome” | Launches the browser. |
+| “Search for restaurant” | Enters a query and opens Google results. |
+| “Open Calculator,” then “What’s 90 + 7?” | Uses Calculator’s controls to produce **97**. |
+| “Open Photo Booth,” then “Take a photo of me” | Opens the camera app and triggers the shutter countdown. |
 
-## Build
+This is a recording of the app in use. It demonstrates these interactions; it is not a performance benchmark or a guarantee for every app.
 
-Requires an Apple silicon Mac running macOS 14 or later and Xcode command-line tools. The current source was built with Swift 6.2.3 in Swift 5 language mode.
+## Get started
+
+You need **an Apple silicon Mac with macOS 14+**, Xcode command-line tools, and **your own funded OpenRouter API key**. The app uses `~typesafe/jev-latest`; no generative planner is involved.
+
+### 1. Build and open
 
 ```sh
+# Install the Apple command-line tools if needed:
+xcode-select --install
+
+# Clone and build:
 git clone https://github.com/ronadin2002/jev-cua.git
 cd jev-cua
 bash build.sh
 open 'dist/Jev Voice.app'
 ```
 
-The build writes to `dist/` (override with `JEV_OUTPUT_DIR`). It uses an available Developer ID Application signing identity, falling back to ad-hoc signing. Set `JEV_SIGNING_IDENTITY` to choose an identity, or `-` for ad-hoc signing. Keep the signing identity and installed app path stable to retain macOS permissions between builds.
+The app is built into `dist/`. The source currently builds with Swift 6.2.3 in Swift 5 language mode. No package manager or third-party Swift dependencies are required.
 
-No API key is included. Enter your own funded OpenRouter key in Settings → General; the app stores it in macOS Keychain. Account funding and key expiration are managed by OpenRouter. Grant Accessibility, Microphone and Speech Recognition permissions when setting up the app. Text commands work with the microphone off, but computer control still requires Accessibility permission.
+### 2. Connect and grant permissions
 
-## Tests and diagnostics
+In **Settings → General**, enter your OpenRouter key. It is saved in **macOS Keychain**.
 
-Run the local checks without making paid API calls or executing UI actions:
+Enable **Accessibility** to let the app operate your Mac. Enable **Microphone** and **Speech Recognition** for voice input. These permissions are managed in **System Settings → Privacy & Security**. After setup, the bar is available for commands and normal launches start listening automatically.
+
+The build uses an available Developer ID Application identity, with an ad-hoc fallback. Keep the app path and signing identity stable between builds so macOS can retain permissions. Set `JEV_SIGNING_IDENTITY` to choose an identity (`-` means ad-hoc); `JEV_OUTPUT_DIR` changes the build destination.
+
+### 3. Speak or type
+
+Start with “Open Calculator and calculate 6 plus 7,” or focus an editable field and say `Type "hello from Jev"`. These are example requests, not built-in task recipes.
+
+| Control | What it does |
+| --- | --- |
+| Microphone button / **Option–Space** | Toggle continuous listening. |
+| **Return** in the bar | Send a typed command. |
+| “End command” | Finish an utterance explicitly. |
+| “Cancel task” / stop button | Stop the current task and clear queued commands. |
+| “Stop listening” | Turn off the mic while an active task can continue. |
+| Menu-bar icon → **Settings & diagnostics** | Connection, permissions, and Jev activity. |
+
+Recognition currently uses English. For literal typing, quote the text you want inserted.
+
+## How it works
+
+```text
+Your voice or text command
+           ↓
+Observe the current Mac interface
+           ↓
+Jev selects an available action
+           ↓
+Execute → observe again → repeat
+           ↓
+Check the result against the request
+```
+
+Jev is the option picker. Swift discovers controls and executes the selected action through macOS Accessibility, keyboard, and pointer APIs. The original request stays in context throughout the loop.
+
+Large action lists are grouped so every discovered action stays reachable without asking about every group. Typing selects literal text from the request or observed screen text. There are no hardcoded website shortcuts or per-app task scripts.
+
+[Read the decision-loop architecture →](docs/architecture.md)
+
+## Current limits and privacy
+
+This is an experimental Accessibility-based controller. Apps with missing or stale Accessibility information can fail. Jev does not understand screenshots or generate original prose, and completion checks can be wrong. Unquoted typing requests can be less reliable than explicit quoted text.
+
+Speech is transcribed on-device. **Commands, relevant screen text, and action options go to OpenRouter** for Jev decisions. API keys stay in Keychain and process memory. Secure text fields are excluded.
+
+Local diagnostics can contain private screen text and URLs. Credentials and authorization headers are excluded from those traces. Only the intentionally published demo media lives in this repository; local recordings, keys, diagnostic traces, and app builds are ignored.
+
+## Build checks and contributing
 
 ```sh
 'dist/Jev Voice.app/Contents/MacOS/JevVoice' --self-test
 'dist/Jev Voice.app/Contents/MacOS/JevVoice' --activity-test
 ```
 
-The commands below use the same executable in `dist/Jev Voice.app/Contents/MacOS/`:
+These checks run without API keys or paid calls. GitHub Actions runs the same build and local suites on macOS; its badge reflects those checks, not live model accuracy.
 
-- `JevVoice --activity-test`: real-client HTTP fixtures for response validation, cancellation, timeouts, automatic recovery, credit failures and a 4,000-option bounded routing regression.
-- `JevVoice --self-test`: catalogue retention, literal span integrity, keyboard coverage, speech endpoints and continuous queue checks.
-- `JevVoice --router-test --report /absolute/path/report.json`: paid API selection tests with synthetic states, no UI actions.
-- `open 'dist/Jev Voice.app' --args --diagnostics`: start with Settings, the command bar and mic off. Use Back to bar to close Settings.
-- In diagnostics, typing into the command bar uses the same production action loop. Each run writes `jev-picker-last-run.json` beside the app, including original request, every choice catalogue, API inputs/outputs, executed actions and observations. It contains screen text; credentials and headers are excluded. Ordinary launch does not persist these traces.
-- Settings → General → Voice diagnostics → Replay audio command accepts a local recording through the real continuous speech engine and command queue. This is a recorded-audio test, not a physical microphone test. Recordings are not included in this repository; supply your own audio fixture to test continuous recognition and execution. Requests are preserved literally; absent apps are no longer silently substituted.
+[Testing and diagnostics](docs/testing.md) · [Contribution guide](CONTRIBUTING.md) · [Report a reproducible issue](https://github.com/ronadin2002/jev-cua/issues)
 
-## Privacy and repository contents
-
-Microphone audio is transcribed on-device. Commands, relevant Accessibility text and available action choices are sent to OpenRouter for Jev decisions. API credentials stay in Keychain and process memory; request authorization headers are excluded from the activity trace.
-
-This repository contains source, the app icon and build configuration. Keys, recordings, compiled apps and local diagnostic traces are excluded. Diagnostics can contain private screen text, commands and URLs; keep them local. Optional speech fixture setup is described in `Tests/README.md`.
-
-The local test suites validate code and HTTP handling. They do not establish model accuracy or guarantee that an arbitrary task will finish. Live model tests require a configured key; recorded-audio execution and normal commands can act on your Mac.
+If this is a project you want to follow, **star the repository**. Reproducible task failures and improvements to UI discovery are especially useful contributions.
