@@ -8,11 +8,11 @@ A small floating bar for voice and text commands. Jev picks the next action from
 ![macOS 14+, Apple silicon](https://img.shields.io/badge/macOS-14%2B%20%C2%B7%20Apple%20silicon-20252b?logo=apple&logoColor=white)
 [![Jev Latest](https://img.shields.io/badge/Jev-latest-83dfc1)](https://typesafe.ai/blog/introducing-system-one-models-and-jev)
 
-[![Jev Voice demo: opening Chrome, searching, calculating, and taking a photo](assets/demo.gif)](assets/demo.mp4)
+[![Jev Voice demo: opening Chrome, searching, calculating, and taking a photo](assets/demo.gif)](https://github.com/ronadin2002/jev-cua/raw/refs/heads/main/assets/demo.mp4)
 
-**[Watch the full 42-second demo with sound →](assets/demo.mp4)**
+**[Download the full demo · 42 seconds, with sound (MP4) →](https://github.com/ronadin2002/jev-cua/raw/refs/heads/main/assets/demo.mp4)**
 
-Preview above plays at 2× speed. The full video plays at its original speed.
+Preview above plays at 2× speed. The downloadable video plays at its original speed.
 
 **[Get started](#get-started)** · **[How it works](#how-it-works)** · **[Contribute](CONTRIBUTING.md)**
 
