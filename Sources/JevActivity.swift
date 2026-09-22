@@ -15,6 +15,7 @@ struct JevCallRecord: Identifiable {
     var milliseconds: Double?
     var answers = ""
     var outcome: String?
+    var endpoint: String? = nil
     var pending: Bool { milliseconds == nil }
     var status: String {
         if pending { return "Waiting for Jev" }
@@ -169,7 +170,7 @@ struct JevActivityView: View {
                         }
                         JSONBodyView(text: bodyText(call), label: bodyTab == "Input" ? "Full Jev request JSON" : bodyTab == "Output" ? "Full Jev response JSON" : "Observed action result")
                             .frame(height: 300).clipShape(RoundedRectangle(cornerRadius: 9))
-                        Text("POST " + JevClient.endpoint.absoluteString).font(.system(size: 9, design: .monospaced)).foregroundStyle(Palette.muted)
+                        Text("POST " + (call.endpoint ?? JevClient.endpoint.absoluteString)).font(.system(size: 9, design: .monospaced)).foregroundStyle(Palette.muted)
                     }
                 }
             }

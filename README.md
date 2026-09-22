@@ -38,7 +38,7 @@ This is a recording of the app in use. It demonstrates these interactions; it is
 
 ## Get started
 
-You need **an Apple silicon Mac with macOS 14+**, Xcode command-line tools, and **your own funded OpenRouter API key**. The app uses `~typesafe/jev-latest`; no generative planner is involved.
+You need **an Apple silicon Mac with macOS 14+**, Xcode command-line tools, and **your own funded OpenRouter or TypeSafe API key**. An OpenRouter key (`sk-or-…`) uses `~typesafe/jev-latest` through OpenRouter; a TypeSafe key (`apikey_…`) calls `jev-latest` directly at `api.typesafe.ai`. No generative planner is involved.
 
 ### 1. Build and open
 
@@ -57,7 +57,7 @@ The app is built into `dist/`. The source currently builds with Swift 6.2.3 in S
 
 ### 2. Connect and grant permissions
 
-In **Settings → General**, enter your OpenRouter key. It is saved in **macOS Keychain**.
+In **Settings → General**, enter your OpenRouter or TypeSafe key. The provider is chosen from the key prefix. It is saved in **macOS Keychain**.
 
 Enable **Accessibility** to let the app operate your Mac. Enable **Microphone** and **Speech Recognition** for voice input. These permissions are managed in **System Settings → Privacy & Security**. After setup, the bar is available for commands and normal launches start listening automatically.
 
@@ -102,7 +102,7 @@ Large action lists are grouped so every discovered action stays reachable withou
 
 This is an experimental Accessibility-based controller. Apps with missing or stale Accessibility information can fail. Jev does not understand screenshots or generate original prose, and completion checks can be wrong. Unquoted typing requests can be less reliable than explicit quoted text.
 
-Speech is transcribed on-device. **Commands, relevant screen text, and action options go to OpenRouter** for Jev decisions. API keys stay in Keychain and process memory. Secure text fields are excluded.
+Speech is transcribed on-device. **Commands, relevant screen text, and action options go to OpenRouter or TypeSafe** (depending on your key) for Jev decisions. API keys stay in Keychain and process memory. Secure text fields are excluded.
 
 Local diagnostics can contain private screen text and URLs. Credentials and authorization headers are excluded from those traces. Only the intentionally published demo media lives in this repository; local recordings, keys, diagnostic traces, and app builds are ignored.
 
