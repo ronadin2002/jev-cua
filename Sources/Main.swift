@@ -143,7 +143,7 @@ final class CommandBarPanel: NSPanel {
 @main struct JevVoiceApp {
     @MainActor static func main() {
         if CommandLine.arguments.contains("--store-key") {
-            guard let pointer = getpass("OpenRouter API key (hidden): ") else { exit(1) }
+            guard let pointer = getpass("OpenRouter or TypeSafe API key (hidden): ") else { exit(1) }
             do { try KeyStore.save(String(cString: pointer)); memset(pointer, 0, strlen(pointer)); print("Key saved in macOS Keychain."); exit(0) }
             catch { print(error.localizedDescription); exit(1) }
         }

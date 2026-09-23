@@ -69,6 +69,7 @@ struct CommandRecord: Identifiable {
     var openPractice: (() -> Void)?
     var focusPractice: (() -> Void)?
     private var cachedKey: String?
+    var provider: JevProvider { cachedKey.flatMap(JevProvider.detect) ?? .openRouter }
     private var microphoneRecovery: Task<Void, Never>?
     private var spokenRequest = false
     private var retryCommand: String?
@@ -135,11 +136,11 @@ struct CommandRecord: Identifiable {
             guard let self, let key = self.cachedKey else { return }
             do {
                 let account = try await JevClient().accountStatus(key: key)
-                self.connectionDetail = "Saved OpenRouter key connected."
+                self.connectionDetail = "Saved \(self.provider.name) key connected."
                 if let expiry = account["expires_at"] as? String, let date = ISO8601DateFormatter().date(from: expiry) ?? Self.expiryFormatter.date(from: expiry) {
                     self.keyExpiry = "This OpenRouter key expires " + date.formatted(date: .abbreviated, time: .omitted) + ". Renew it in OpenRouter before then."
                 }
-            } catch { self.connectionDetail = "Could not check OpenRouter: " + error.localizedDescription }
+            } catch { self.connectionDetail = "Could not check \(self.provider.name): " + error.localizedDescription }
         }
         permissionTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refreshPermissions() }
@@ -162,7 +163,7 @@ struct CommandRecord: Identifiable {
     func checkConnection() {
         guard !busy, !checkingConnection, let key = cachedKey ?? KeyStore.read() else { return }
         checkingConnection = true
-        connectionDetail = "Checking Jev through OpenRouter…"
+        connectionDetail = "Checking Jev through \(provider.name)…"
         Task {
             var connected = false
             do {
@@ -285,7 +286,7 @@ struct CommandRecord: Identifiable {
     }
     func run(_ command: String, fromSpeech: Bool) {
         guard !busy, !checkingConnection else { return }
-        guard let key = cachedKey ?? KeyStore.read() else { keyConfigured = false; showSetup = true; showMain?(); detail = "The saved OpenRouter key is unavailable. Unlock your Mac Keychain or save a key in Settings."; return }
+        guard let key = cachedKey ?? KeyStore.read() else { keyConfigured = false; showSetup = true; showMain?(); detail = "The saved API key is unavailable. Unlock your Mac Keychain or save a key in Settings."; return }
         cachedKey = key
         guard AXIsProcessTrusted() else { detail = "Enable Jev Voice in macOS Accessibility to control apps."; showSetup = true; showMain?(); return }
         guard command.count <= 4000 else { fail("Keep each request under 4,000 characters."); return }
@@ -561,7 +562,7 @@ struct CommandRecord: Identifiable {
     }
     func fail(_ message: String) {
         busy = false; listening = micEnabled; phase = "Needs attention"; detail = message
-        if billingIssue != nil { phase = "OpenRouter needs attention"; return }
+        if billingIssue != nil { phase = "\(provider.name) needs attention"; return }
         continueSession(); if !micEnabled { hideOverlay?() }
     }
     private func addRecord(action: String, success: Bool) {

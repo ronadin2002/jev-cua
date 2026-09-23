@@ -41,12 +41,12 @@ struct SettingsView: View {
             DisclosureGroup("Voice diagnostics") { Button("Replay audio command…") { model.chooseAudioReplay() }.disabled(model.busy) }
             Card {
                 VStack(alignment: .leading, spacing: 12) {
-                    Label("OpenRouter connection", systemImage: "key.fill").font(.system(size: 15, weight: .medium))
+                    Label("Jev connection", systemImage: "key.fill").font(.system(size: 15, weight: .medium))
                     Text(model.keyConfigured ? "Your API key is stored in macOS Keychain." : "Add your API key. It is stored only in macOS Keychain.").font(.system(size: 12)).foregroundStyle(Palette.muted)
                     if model.keyConfigured {
                         DisclosureGroup("Change API key") { keyEntry.padding(.top, 8) }.font(.system(size: 12))
                     } else { keyEntry }
-                    Text("Model: ~typesafe/jev-latest").font(.system(size: 11, design: .monospaced)).foregroundStyle(Palette.accent)
+                    Text("Model: \(model.provider.model) via \(model.provider.name)").font(.system(size: 11, design: .monospaced)).foregroundStyle(Palette.accent)
                     connectionActions
                     if !model.connectionDetail.isEmpty { Text(model.connectionDetail).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true) }
                     if !model.keyExpiry.isEmpty { Text(model.keyExpiry).font(.system(size: 11)).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true) }
@@ -73,14 +73,16 @@ struct SettingsView: View {
     }
     private var keyEntry: some View {
         HStack {
-            SecureField("OpenRouter API key", text: $model.keyInput).textFieldStyle(.roundedBorder)
+            SecureField("OpenRouter or TypeSafe API key", text: $model.keyInput).textFieldStyle(.roundedBorder)
             Button("Save key") { model.saveKey() }.disabled(model.keyInput.isEmpty)
         }
     }
     private var connectionActions: some View {
         HStack {
-            Link("OpenRouter credits", destination: OpenRouterBilling.creditsURL)
-            Link("Key limits", destination: OpenRouterBilling.keysURL)
+            if model.provider == .openRouter {
+                Link("OpenRouter credits", destination: OpenRouterBilling.creditsURL)
+                Link("Key limits", destination: OpenRouterBilling.keysURL)
+            }
             Spacer()
             Button(model.checkingConnection ? "Checking…" : "Check connection") { model.checkConnection() }
                 .disabled(!model.keyConfigured || model.busy || model.checkingConnection)

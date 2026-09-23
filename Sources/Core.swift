@@ -6,6 +6,23 @@ enum VoiceError: LocalizedError {
     var errorDescription: String? { switch self { case .message(let message), .verification(let message), .billing(let message), .transient(let message): return message } }
 }
 
+/// Jev is served by OpenRouter (`sk-or-…` keys) and directly by TypeSafe (`apikey_…` keys).
+/// Both accept the same decision request and return the same answer envelope.
+enum JevProvider: String {
+    case openRouter, typeSafe
+    static func detect(key: String) -> JevProvider? {
+        let clean = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.hasPrefix("sk-or-") { return .openRouter }
+        if clean.hasPrefix("apikey_") { return .typeSafe }
+        return nil
+    }
+    var name: String { self == .openRouter ? "OpenRouter" : "TypeSafe" }
+    var endpoint: URL {
+        self == .openRouter ? URL(string: "https://openrouter.ai/api/alpha/decisions")! : URL(string: "https://api.typesafe.ai/v1/systemone")!
+    }
+    var model: String { self == .openRouter ? "~typesafe/jev-latest" : "jev-latest" }
+}
+
 enum OpenRouterBilling {
     static let creditsURL = URL(string: "https://openrouter.ai/settings/credits")!
     static let keysURL = URL(string: "https://openrouter.ai/settings/keys")!
@@ -40,7 +57,7 @@ enum KeyStore {
     }
     static func save(_ key: String) throws {
         let clean = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard clean.hasPrefix("sk-or-"), clean.count > 30 else { throw VoiceError.message("Enter a valid OpenRouter API key.") }
+        guard JevProvider.detect(key: clean) != nil, clean.count > 30 else { throw VoiceError.message("Enter a valid OpenRouter (sk-or-…) or TypeSafe (apikey_…) API key.") }
         SecKeychainSetUserInteractionAllowed(false)
         defer { SecKeychainSetUserInteractionAllowed(true) }
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
@@ -102,8 +119,8 @@ final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate {
 }
 
 @MainActor final class JevClient {
-    nonisolated static let model = "~typesafe/jev-latest"
-    nonisolated static let endpoint = URL(string: "https://openrouter.ai/api/alpha/decisions")!
+    nonisolated static let model = JevProvider.openRouter.model
+    nonisolated static let endpoint = JevProvider.openRouter.endpoint
     private let delegate = NoRedirectDelegate()
     private let configuration: URLSessionConfiguration?
     let maxRetries: Int
@@ -122,6 +139,12 @@ final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate {
     var onActivity: ((JevCallRecord) -> Void)?
     var activityStage = "Decision"
     func accountStatus(key: String) async throws -> [String: Any] {
+        if JevProvider.detect(key: key) == .typeSafe {
+            // TypeSafe has no key-info endpoint; a connection check verifies the key.
+            let result = try await checkConnection(key: key)
+            guard result.actionID == "ready" else { throw VoiceError.message("TypeSafe could not verify this API key.") }
+            return ["provider": "typesafe"]
+        }
         var request = URLRequest(url: URL(string: "https://openrouter.ai/api/v1/key")!)
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         let (data, response) = try await session.data(for: request)
@@ -176,17 +199,18 @@ final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate {
         try Task.checkCancellation()
         guard remainingCalls > 0 else { throw VoiceError.message("Decision limit reached before completion.") }
         remainingCalls -= 1
-        let payload: [String: Any] = ["model": Self.model, "state": state, "questions": questions.mapValues {
+        let provider = JevProvider.detect(key: key) ?? .openRouter
+        let payload: [String: Any] = ["model": provider.model, "state": state, "questions": questions.mapValues {
             ["type": "choice", "instructions": $0.instructions, "criteria": $0.criteria] as [String: Any]
         }]
-        var request = URLRequest(url: Self.endpoint)
+        var request = URLRequest(url: provider.endpoint)
         request.httpMethod = "POST"
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         let start = Date()
         var activity = JevCallRecord(stage: activityStage, command: state["original_request"] as? String ?? "Decision request",
-            input: JevCallRecord.formatted(request.httpBody!), optionCount: questions.values.reduce(0) { $0 + $1.criteria.count })
+            input: JevCallRecord.formatted(request.httpBody!), optionCount: questions.values.reduce(0) { $0 + $1.criteria.count }, endpoint: provider.endpoint.absoluteString)
         onActivity?(activity)
         var exchange: [String: Any] = ["input": payload, "request_id": activity.id.uuidString,
             "stage": activityStage, "started_at": ISO8601DateFormatter().string(from: start), "question_version": "live-picker-v4.2"]
@@ -206,16 +230,16 @@ final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate {
         exchange["response_body"] = String(decoding: data, as: UTF8.self)
         if let object = try? JSONSerialization.jsonObject(with: data) { exchange["output"] = object }
         try Task.checkCancellation()
-        guard let http = response as? HTTPURLResponse else { throw VoiceError.message("OpenRouter returned no HTTP response.") }
+        guard let http = response as? HTTPURLResponse else { throw VoiceError.message("\(provider.name) returned no HTTP response.") }
         guard http.statusCode == 200 else {
             exchange["http_error"] = http.statusCode
             exchange["error_body"] = String(decoding: data, as: UTF8.self)
 
             switch http.statusCode {
-            case 401: throw VoiceError.message("OpenRouter rejected the API key. Update it in Setup.")
-            case 402: throw VoiceError.billing(OpenRouterBilling.message(for: data))
-            case 429, 500, 502, 503, 504: throw VoiceError.transient("OpenRouter is temporarily unavailable (HTTP \(http.statusCode)).")
-            default: throw VoiceError.message("OpenRouter returned HTTP \(http.statusCode). No action was taken.")
+            case 401: throw VoiceError.message("\(provider.name) rejected the API key. Update it in Setup.")
+            case 402: throw VoiceError.billing(provider == .openRouter ? OpenRouterBilling.message(for: data) : "TypeSafe reported a billing problem for this API key. Check your TypeSafe account, then check the connection and repeat your request.")
+            case 429, 500, 502, 503, 504: throw VoiceError.transient("\(provider.name) is temporarily unavailable (HTTP \(http.statusCode)).")
+            default: throw VoiceError.message("\(provider.name) returned HTTP \(http.statusCode). No action was taken.")
             }
         }
         let result = try JSONDecoder().decode(JevResponse.self, from: data)
@@ -245,7 +269,7 @@ final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate {
             if error is CancellationError || (error as? URLError)?.code == .cancelled {
                 activity.error = "Request cancelled; no decision executed from this call."
             } else if (error as? URLError)?.code == .timedOut {
-                activity.error = "OpenRouter request timed out; no decision executed from this call."
+                activity.error = "\(provider.name) request timed out; no decision executed from this call."
             } else { activity.error = error.localizedDescription }
             throw error
         }

@@ -4,6 +4,9 @@ import AppKit
 enum SelfTests {
     static func run() {
         precondition(JevClient.model == "~typesafe/jev-latest")
+        precondition(JevProvider.detect(key: "sk-or-v1-abc") == .openRouter && JevProvider.detect(key: " apikey_abc\n") == .typeSafe && JevProvider.detect(key: "sk-ant-abc") == nil)
+        precondition(JevProvider.typeSafe.model == "jev-latest" && JevProvider.typeSafe.endpoint.absoluteString == "https://api.typesafe.ai/v1/systemone")
+        print("PASS: OpenRouter and TypeSafe keys route to their own endpoint and model id.")
         let creditFailure = Data(#"{"error":{"metadata":{"limit_source":"openrouter_credits"}}}"#.utf8)
         let keyFailure = Data(#"{"error":{"metadata":{"limit_source":"openrouter_key_limit"}}}"#.utf8)
         let temporaryFailure = Data(#"{"error":{"metadata":{"limit_source":"openrouter_in_flight_budget"}}}"#.utf8)
